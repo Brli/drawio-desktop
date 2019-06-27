@@ -1,60 +1,48 @@
 # Maintainer: kitsunyan <`echo a2l0c3VueWFuQGFpcm1haWwuY2MK | base64 -d`>
 
 pkgname=drawio-desktop
-pkgver=10.6.8
+pkgver=10.8.0
 pkgrel=1
 pkgdesc='Diagram drawing application built on web technology'
 arch=('x86_64')
 url='https://github.com/jgraph/drawio'
 license=('Apache')
-depends=(electron gconf libnotify)
+depends=(electron)
 makedepends=(npm)
 source=("drawio-desktop-$pkgver.zip::https://github.com/jgraph/drawio/releases/download/v$pkgver/draw.war")
-noextract=("drawio-desktop-$pkgver.zip")
-sha256sums=('64bda20436c635918131997f2ea36aa5946b18fca75322b7ec2ed9883417c8c8')
+sha256sums=('ffcc8b3d694aa7783995253781380b89d41c935462ea1971f3f91dab4d66cbee')
 
 prepare() {
-  rm -rf "$srcdir/drawio-$pkgver"
-  mkdir "$srcdir/drawio-$pkgver"
-  cd "$srcdir/drawio-$pkgver"
-
-  bsdtar -xf "../drawio-desktop-$pkgver.zip" -C .
-  rm -rf "META-INF" "WEB-INF"
+  rm -rfv "META-INF" "WEB-INF" "drawio-desktop-$pkgver.zip"
 }
 
 build() {
-  cd "$srcdir/drawio-$pkgver"
-
   npm install --cache ../npm-cache --only=production
   rm -f 'package-lock.json'
+  find $srcdir -maxdepth 10 -name 'package.json' -exec sed 's,/tmp/makepkg/drawio-desktop/src,/usr/lib/draw.io,g' -i {} +
 }
 
 package() {
-  cd "$srcdir/drawio-$pkgver"
-
-  mkdir -p "$pkgdir/usr/lib"
+  install -dm755 "$pkgdir/usr/lib"
   cp -rp . "$pkgdir/usr/lib/draw.io"
 
   # create run script
-  mkdir -p "$pkgdir/usr/bin"
-  printf '%s\n' \
-  '#!/bin/sh' \
-  'exec electron /usr/lib/draw.io "$@" > /dev/null 2> /dev/null' \
-  > "$pkgdir/usr/bin/draw.io"
-  chmod a+x "$pkgdir/usr/bin/draw.io"
+  install -Dm755 /dev/stdin "$pkgdir/usr/bin/draw.io" <<END
+#!/bin/sh
+exec electron /usr/lib/draw.io "$@" > /dev/null 2> /dev/null
+END
 
   # create desktop file
-  mkdir -p "$pkgdir/usr/share/applications"
-  printf '%s\n' \
-  '[Desktop Entry]' \
-  'Name=draw.io' \
-  'Comment=draw.io desktop' \
-  'Exec=/usr/bin/draw.io %U' \
-  'Terminal=false' \
-  'Type=Application' \
-  'Icon=draw.io' \
-  'Categories=Graphics;' \
-  > "$pkgdir/usr/share/applications/draw.io.desktop"
+  install -Dm644 /dev/stdin "$pkgdir/usr/share/applications/draw.io.desktop" <<END
+[Desktop Entry]
+Name=draw.io
+Comment=draw.io desktop
+Exec=/usr/bin/draw.io %U
+Terminal=false
+Type=Application
+Icon=draw.io
+Categories=Graphics;
+END
 
   # create icons
   find 'images' -regex '.*/drawlogo[0-9]+\.png' |
